@@ -19,7 +19,7 @@ const colors = [
 export class SummaryByCategoryViewModel extends BaseViewModel {
   authorityId: number;
   _fromDate?: Date = undefined;
-  _toDate: Date = new Date();
+  _toDate?: Date = new Date();
 
   data: ChartData<"bar"> = {
     datasets: [],
@@ -59,16 +59,16 @@ export class SummaryByCategoryViewModel extends BaseViewModel {
   }
 
   set fromDate(value: Date | undefined) {
-    if (value) value.setUTCHours(0, 0, 0, 0);
+    if (value) value.setHours(0, 0, 0, 0);
     this._fromDate = value;
   }
 
-  get toDate(): Date {
+  get toDate(): Date | undefined {
     return this._toDate;
   }
 
-  set toDate(value: Date) {
-    if (value) value.setUTCHours(23, 59, 59, 999);
+  set toDate(value: Date | undefined) {
+    if (value) value.setHours(23, 59, 59, 999);
     this._toDate = value;
   }
 
@@ -111,8 +111,21 @@ export class SummaryByCategoryViewModel extends BaseViewModel {
   }
 
   transformData(data: SummaryByCategoryData[]) {
+    const labels: string[] = [];
+    let start: Date | undefined = undefined;
+    let end: Date | undefined = undefined;
+    if (this.fromDate) start = new Date(this.fromDate);
+    if (this.toDate) end = new Date(this.toDate);
+    if (!start && data.length) start = new Date(data[0].day);
+    if (!end && data.length)
+      end = new Date(Math.max(...data.map(element => element.day.getTime())));
+    if (start && end) {
+      for (const d: Date = start; d <= end; d.setDate(d.getDate() + 1)) {
+        labels.push(`${d.getMonth() + 1}/${d.getDate()}`);
+      }
+    }
     data.forEach(
-      item => (item.x = `${item.day.getMonth()}/${item.day.getDate()}`)
+      item => (item.x = `${item.day.getMonth() + 1}/${item.day.getDate()}`)
     );
     const groupByCategory = this.groupBy(
       data,
@@ -130,6 +143,7 @@ export class SummaryByCategoryViewModel extends BaseViewModel {
     datasets = datasets.sort((n1, n2) => n1.ordering - n2.ordering);
     // console.log(datasets);
     this.data = {
+      labels: labels,
       datasets: datasets,
     };
   }
